@@ -1,3 +1,4 @@
+using Project99.Caching;
 using Project99.Data;
 using Project99.Repository;
 
@@ -12,6 +13,12 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<DataContext>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<ICargoRepository, CargoRepository>();
+builder.Services.AddScoped<ICachingServices, CachingServices>();
+builder.Services.AddStackExchangeRedisCache(o =>
+{
+    o.InstanceName = "instance";
+    o.Configuration = builder.Configuration["Redis:Url"];
+});
 
 var app = builder.Build();
 

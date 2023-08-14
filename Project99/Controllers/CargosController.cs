@@ -5,6 +5,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Newtonsoft.Json;
+using Project99.Caching;
 using Project99.Data;
 using Project99.Model;
 using Project99.Repository;
@@ -16,16 +19,17 @@ namespace Project99.Controllers
     public class CargosController : ControllerBase
     {
         private readonly ICargoRepository _cargoRepository;
+        private readonly ICachingServices _cachingServices;
 
-        public CargosController(ICargoRepository cargoRepository)
+        public CargosController(ICargoRepository cargoRepository, ICachingServices cachingServices)
         {
             _cargoRepository = cargoRepository;
+            _cachingServices = cachingServices;
         }
-
-        // GET: api/Cargos
+        
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Cargo>>> GetCargos()
-        {
+        {            
             var lista = await _cargoRepository.GetAllAsync();
 
             if (lista == null)
@@ -36,22 +40,32 @@ namespace Project99.Controllers
             return lista;
         }
 
-        // GET: api/Cargos/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Cargo>> GetCargo(int id)
         {
-            var cargo = await _cargoRepository.GetByIdAsync(id);
+            Cargo cargo;
 
-            if (cargo == null)
-            {
-                return NotFound();
+            var CargoCache = await _cachingServices.GetAsync(id.ToString());
+            
+            if (!string.IsNullOrEmpty(CargoCache)) 
+            {                
+                return Ok(JsonConvert.DeserializeObject<Cargo>(CargoCache));
             }
+            else
+            {
+                cargo = await _cargoRepository.GetByIdAsync(id);
+
+                if (cargo == null)
+                {
+                    return NotFound("Cargo não cadastrado");
+                }
+            }
+
+            await _cachingServices.SetAsync(id.ToString(), JsonConvert.SerializeObject(cargo));
 
             return cargo;
         }
 
-        // PUT: api/Cargos/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<ActionResult<Cargo>> PutCargo(int id, Cargo cargo)
         {
@@ -67,8 +81,6 @@ namespace Project99.Controllers
             return cargoUpdate;
         }
 
-        // POST: api/Cargos
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Cargo>> PostCargo(Cargo cargo)
         {
@@ -89,7 +101,6 @@ namespace Project99.Controllers
             return Ok($"O cargo {cargoInsert.Nome} foi inserido com Sucesso!");
         }
 
-        // DELETE: api/Cargos/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCargo(int id)
         {
@@ -103,6 +114,11 @@ namespace Project99.Controllers
             await _cargoRepository.Delete(cargo);
 
             return Ok();
+        }
+
+        private static string GetCacheKey(int id)
+        {
+            return $"{string.Join("-", id)}";
         }
 
     }
