@@ -16,7 +16,10 @@ namespace Project99.Data
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             base.OnConfiguring(optionsBuilder);
-            optionsBuilder.UseSqlServer(_configuration.GetConnectionString("conexao"));
+            var connectionString = _configuration.GetConnectionString(Environment.MachineName) ??
+                _configuration.GetConnectionString("DefaultConnection");
+
+            optionsBuilder.UseSqlServer(connectionString);
         }
 
         public DbSet<Integrantes> Integrantes { get; set; }
