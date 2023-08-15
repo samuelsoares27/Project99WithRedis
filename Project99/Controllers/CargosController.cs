@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ImageProcessor;
+using ImageProcessor.Plugins.WebP.Imaging.Formats;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +22,7 @@ namespace Project99.Controllers
     {
         private readonly ICargoRepository _cargoRepository;
         private readonly ICachingServices _cachingServices;
+        private readonly string _path = Path.Combine(Directory.GetCurrentDirectory(), "images"); 
 
         public CargosController(ICargoRepository cargoRepository, ICachingServices cachingServices)
         {
@@ -116,10 +119,44 @@ namespace Project99.Controllers
             return Ok();
         }
 
-        private static string GetCacheKey(int id)
+        [HttpPost("imagemCargo")]
+        public IActionResult Index(IFormFile image)
         {
-            return $"{string.Join("-", id)}";
-        }
+            try
+            {
+                
+                if (image == null) 
+                    return NotFound("Imagem não carregada");
 
+                if (!Directory.Exists(_path))
+                {
+                    Directory.CreateDirectory(_path);
+                }
+
+                using (var stream = new FileStream(Path.Combine(_path, image.FileName), FileMode.Create))
+                {
+                    image.CopyTo(stream);
+                }
+
+                using (var webPFileStream = new FileStream(Path.Combine(_path, Guid.NewGuid() + ".webp"), FileMode.Create))
+                {
+                    using (ImageFactory imageFactory = new (preserveExifData: false))
+                    {
+                        imageFactory.Load(image.OpenReadStream()) 
+                                    .Format(new WebPFormat())
+                                    .Quality(100)
+                                    .Save(webPFileStream); 
+                    }
+                }
+
+                return Ok("Imagem salva com sucesso!");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "Erro no upload: " + ex.Message);
+            }
+
+        }
     }
+
 }
