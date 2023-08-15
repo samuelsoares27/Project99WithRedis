@@ -140,13 +140,11 @@ namespace Project99.Controllers
 
                 using (var webPFileStream = new FileStream(Path.Combine(_path, Guid.NewGuid() + ".webp"), FileMode.Create))
                 {
-                    using (ImageFactory imageFactory = new (preserveExifData: false))
-                    {
-                        imageFactory.Load(image.OpenReadStream()) 
-                                    .Format(new WebPFormat())
-                                    .Quality(100)
-                                    .Save(webPFileStream); 
-                    }
+                    using ImageFactory imageFactory = new(preserveExifData: false);
+                    imageFactory.Load(image.OpenReadStream())
+                                .Format(new WebPFormat())
+                                .Quality(100)
+                                .Save(webPFileStream);
                 }
 
                 return Ok("Imagem salva com sucesso!");
